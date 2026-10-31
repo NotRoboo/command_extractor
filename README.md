@@ -6,7 +6,7 @@ This mod is useful if you are a Minecraft datapack developer/programmer working 
 
 This mod requires [Architectury API mod](https://modrinth.com/mod/architectury-api "Architectury API mod") to be installed.
 
-This mod currently supports Minecraft 1.20.1, tested on Forge, Quilt, and Fabric. Use older versions of the mod for Minecraft 1.19.2 and 1.19.4.
+This mod currently supports Minecraft 1.21.11 on Fabric and NeoForge. Use older versions of the mod for earlier Minecraft versions.
 
 ## Usage
 
