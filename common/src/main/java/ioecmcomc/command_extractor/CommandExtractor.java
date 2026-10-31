@@ -2,13 +2,13 @@ package ioecmcomc.command_extractor;
 
 import static net.minecraft.commands.Commands.literal;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 
 import com.google.common.base.Suppliers;
-import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import org.slf4j.Logger;
@@ -19,6 +19,8 @@ import com.mojang.brigadier.Command;
 
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.registry.registries.RegistrarManager;
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.synchronization.ArgumentUtils;
@@ -43,6 +45,10 @@ public class CommandExtractor {
                             }));
         });
 
+        if (Platform.getEnvironment() == Env.CLIENT) {
+            ClientCommandExtractor.init();
+        }
+
         LOGGER.info(PlatformSpecific.getConfigDirectory().toAbsolutePath().normalize().toString());
     }
 
@@ -60,16 +66,12 @@ public class CommandExtractor {
             Commands commands = ctx.getSource().getServer().getCommands();
             CommandDispatcher<CommandSourceStack> disp = commands.getDispatcher();
 
-            String path = java.nio.file.Path.of("./extracted/commands.json", "").toAbsolutePath().normalize()
-                    .toString();
-            new File("extracted").mkdir();
-            try (FileWriter writer = new FileWriter(path)) {
-                Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                JsonObject obj = ArgumentUtils.serializeNodeToJson(disp, disp.getRoot());
-                if (!keepAll) {
-                    obj.get("children").getAsJsonObject().remove("cmdextr");
-                }
-                gson.toJson(obj, gson.newJsonWriter(writer));
+            JsonObject obj = ArgumentUtils.serializeNodeToJson(disp, disp.getRoot());
+            if (!keepAll) {
+                obj.get("children").getAsJsonObject().remove("cmdextr");
+            }
+            try {
+                String path = writeJson(obj, "commands.json");
                 sendSystemMessage(ctx, "Extracted commands to '" + path + "'");
                 return Command.SINGLE_SUCCESS;
             } catch (IOException e) {
@@ -82,6 +84,16 @@ public class CommandExtractor {
             LOGGER.error("Stack trace:", e);
             return 0;
         }
+    }
+
+    static String writeJson(JsonObject obj, String fileName) throws IOException {
+        Path dir = Path.of("extracted").toAbsolutePath().normalize();
+        Files.createDirectories(dir);
+        Path file = dir.resolve(fileName);
+        try (Writer writer = Files.newBufferedWriter(file)) {
+            new GsonBuilder().setPrettyPrinting().create().toJson(obj, writer);
+        }
+        return file.toString();
     }
 
     private static void sendSystemMessage(CommandContext<CommandSourceStack> ctx, String message) {

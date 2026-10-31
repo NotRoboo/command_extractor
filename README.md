@@ -10,7 +10,9 @@ This mod currently supports Minecraft 1.21.11 on Fabric and NeoForge. Use older 
 
 ## Usage
 
-Run `/cmdextr` command inside the game to extract commands.
+Run `/cmdextr` command inside the game to extract commands. This command exists only where the mod is running on the server (singleplayer or a server with the mod installed).
+
+To extract the commands that a server you joined sends to your client, run `/cmdextrc` instead. It only needs the mod on your client and saves the result into `extracted/server_commands.json`. Like `/cmdextr`, it supports the `all` argument.
 
 The extracted JSON command tree file will be saved into `extracted/commands.json` in the game folder.
 
