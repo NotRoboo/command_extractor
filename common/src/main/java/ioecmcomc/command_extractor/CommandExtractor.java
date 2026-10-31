@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 import com.google.common.base.Suppliers;
@@ -14,6 +16,7 @@ import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.logging.LogUtils;
 import com.mojang.brigadier.Command;
 
@@ -66,13 +69,11 @@ public class CommandExtractor {
             Commands commands = ctx.getSource().getServer().getCommands();
             CommandDispatcher<CommandSourceStack> disp = commands.getDispatcher();
 
-            JsonObject obj = ArgumentUtils.serializeNodeToJson(disp, disp.getRoot());
-            if (!keepAll) {
-                obj.get("children").getAsJsonObject().remove("cmdextr");
-            }
+            List<String> skipped = new ArrayList<>();
+            JsonObject obj = serializeTree(disp, keepAll ? null : "cmdextr", skipped);
             try {
                 String path = writeJson(obj, "commands.json");
-                sendSystemMessage(ctx, "Extracted commands to '" + path + "'");
+                sendSystemMessage(ctx, "Extracted commands to '" + path + "'" + describeSkipped(skipped));
                 return Command.SINGLE_SUCCESS;
             } catch (IOException e) {
                 sendSystemMessage(ctx, "Can not create file to extract commands: " + e.getLocalizedMessage());
@@ -84,6 +85,32 @@ public class CommandExtractor {
             LOGGER.error("Stack trace:", e);
             return 0;
         }
+    }
+
+    static <S> JsonObject serializeTree(CommandDispatcher<S> disp, String excluded, List<String> skipped) {
+        JsonObject children = new JsonObject();
+        for (CommandNode<S> node : disp.getRoot().getChildren()) {
+            if (node.getName().equals(excluded)) {
+                continue;
+            }
+            try {
+                children.add(node.getName(), ArgumentUtils.serializeNodeToJson(disp, node));
+            } catch (Exception e) {
+                skipped.add(node.getName());
+                LOGGER.warn("Skipped command '{}': {}", node.getName(), e.getLocalizedMessage());
+            }
+        }
+        JsonObject obj = new JsonObject();
+        obj.addProperty("type", "root");
+        obj.add("children", children);
+        return obj;
+    }
+
+    static String describeSkipped(List<String> skipped) {
+        if (skipped.isEmpty()) {
+            return "";
+        }
+        return " (skipped " + skipped.size() + " unsupported: " + String.join(", ", skipped) + ")";
     }
 
     static String writeJson(JsonObject obj, String fileName) throws IOException {

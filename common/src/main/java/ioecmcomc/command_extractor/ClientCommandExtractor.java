@@ -1,6 +1,8 @@
 package ioecmcomc.command_extractor;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 
@@ -13,7 +15,6 @@ import dev.architectury.event.events.client.ClientCommandRegistrationEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
-import net.minecraft.commands.synchronization.ArgumentUtils;
 import net.minecraft.network.chat.Component;
 
 public class ClientCommandExtractor {
@@ -39,12 +40,10 @@ public class ClientCommandExtractor {
 
         try {
             CommandDispatcher<ClientSuggestionProvider> disp = connection.getCommands();
-            JsonObject obj = ArgumentUtils.serializeNodeToJson(disp, disp.getRoot());
-            if (!keepAll) {
-                obj.get("children").getAsJsonObject().remove(COMMAND_NAME);
-            }
+            List<String> skipped = new ArrayList<>();
+            JsonObject obj = CommandExtractor.serializeTree(disp, keepAll ? null : COMMAND_NAME, skipped);
             String path = CommandExtractor.writeJson(obj, "server_commands.json");
-            sendMessage("Extracted server commands to '" + path + "'");
+            sendMessage("Extracted server commands to '" + path + "'" + CommandExtractor.describeSkipped(skipped));
             return Command.SINGLE_SUCCESS;
         } catch (IOException e) {
             sendMessage("Can not create file to extract commands: " + e.getLocalizedMessage());
