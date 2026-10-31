@@ -32,7 +32,6 @@ jobs:
           name: command_extractor-jars
           path: |
             fabric/build/libs/*.jar
-            neoforge/build/libs/*.jar
             !**/*-dev*.jar
             !**/*-sources.jar
           if-no-files-found: error
